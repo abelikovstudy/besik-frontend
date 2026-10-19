@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host 127.0.0.1",
-    "test": "tsx --test src/lib/store.test.ts",
+    "build": "tsc --noEmit && vite build --outDir dist/client && vite build --ssr src/entry-server.tsx --outDir dist/server",
+    "start": "node server/index.mjs",
+    "preview": "node server/index.mjs --port 4173",
+    "test": "tsx --test src/lib/*.test.ts",
+    "release:vps": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-vps.ps1",
     "format": "prettier --write src vite.config.ts tsconfig.json package.json index.html README.md"
   },
   "dependencies": {

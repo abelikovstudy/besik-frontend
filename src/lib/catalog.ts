@@ -207,7 +207,14 @@ export function productImage(
   const image = variant?.attributes?.imageUrl || product.attributes?.imageUrl;
   if (typeof image !== "string") return undefined;
   try {
-    const url = new URL(image, window.location.origin);
+    const url = new URL(
+      image,
+      typeof window === "undefined"
+        ? "http://image.local"
+        : window.location.origin,
+    );
+    if (url.origin === "http://image.local")
+      return `${url.pathname}${url.search}`;
     return ["https:", "http:"].includes(url.protocol) ? url.href : undefined;
   } catch {
     return undefined;

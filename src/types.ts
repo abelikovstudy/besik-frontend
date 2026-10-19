@@ -1,4 +1,12 @@
 export type I18n = Partial<Record<"ru" | "en" | "ka", string>>;
+export interface SessionUser {
+  id: string;
+  username: string;
+  role: "root" | "admin" | "user";
+  email?: string | null;
+  emailVerified?: boolean;
+  customerId?: string | null;
+}
 export interface Category {
   id: string;
   parentId?: string | null;

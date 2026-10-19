@@ -1,5 +1,5 @@
 import { useLanguage } from "../hooks/useLanguage";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -9,7 +9,7 @@ import {
   ShoppingBag,
   Trash2,
 } from "lucide-react";
-import type { CartLine, Catalog, Order } from "../types";
+import type { CartLine, Catalog, Order, SessionUser } from "../types";
 import { createOrder, demoMode, loadCatalog } from "../lib/api";
 import { cartDetails, validateCart } from "../lib/cart";
 import { orderInput } from "../lib/checkout";
@@ -21,16 +21,23 @@ export function CartDialog({
   catalog,
   setCart,
   setCatalog,
+  user,
+  onSignIn,
   onClose,
 }: {
   cart: CartLine[];
   catalog: Catalog;
   setCart: (cart: CartLine[]) => void;
   setCatalog: (catalog: Catalog) => void;
+  user: SessionUser | null;
+  onSignIn: () => void;
   onClose: () => void;
 }) {
   const { t, localized, money } = useLanguage();
   const [checkout, setCheckout] = useState(false);
+  useEffect(() => {
+    if (!user) setCheckout(false);
+  }, [user]);
   const [method, setMethod] = useState<"delivery" | "pickup">("delivery");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -84,7 +91,7 @@ export function CartDialog({
           ),
         );
       }
-      const result = await createOrder(input);
+      const result = await createOrder(input, user);
       setOrder(result);
       setCart([]);
     } catch (e) {
@@ -268,9 +275,9 @@ export function CartDialog({
               <button
                 className="button primary full"
                 disabled={Boolean(validation) || demoMode}
-                onClick={() => setCheckout(true)}
+                onClick={() => (user ? setCheckout(true) : onSignIn())}
               >
-                {t("Перейти к оформлению")}
+                {t(user ? "Перейти к оформлению" : "Войти для оформления")}
                 <ArrowRight size={17} />
               </button>
             </>

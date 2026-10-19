@@ -7,7 +7,7 @@
 - Base URL локально: `http://localhost:3000/api`
 - Swagger: `http://localhost:3000/docs`
 - Формат запросов и ответов: `application/json`
-- Авторизация пока не реализована.
+- Чтение каталога, изображений и доступных остатков открыто без регистрации. Корзина хранится в браузере. Оформление заказов и личные данные требуют HttpOnly-cookie сессии; изменяющие запросы также требуют X-CSRF-Protection: 1.
 - Все PostgreSQL `BIGINT` ID передаются строками: `"123"`.
 - Все значения `NUMERIC`, включая цены и количества, передаются строками: `"12.50"`, `"3.000"`.
 - Даты передаются в ISO 8601: `"2026-09-14T12:00:00.000Z"`.
@@ -36,6 +36,20 @@
 ```
 
 Основные коды: `400` — неверные данные или переход состояния, `404` — объект не найден, `409` — конфликт уникальности, `500` — внутренняя ошибка.
+
+## Авторизация витрины
+
+- `GET /auth/options` — `{ googleEnabled, emailEnabled }`, доступность способов регистрации.
+- `POST /auth/register` — `{ username, email, password }`; отправляет подтверждение, не создаёт сессию.
+- `POST /auth/resend-verification` — `{ email }`; повторная отправка подтверждения.
+- `POST /auth/verify-email` — `{ token }`; подтверждает email, возвращает `{ emailVerified: true }`.
+- `POST /auth/google/start` — устанавливает cookie OAuth-попытки и возвращает `{ authorizationUrl }`.
+- `GET /auth/google/callback` — callback Google, обрабатывается backend; перенаправляет на `AUTH_SUCCESS_URL`.
+- `POST /auth/login` — `{ username, password }`; устанавливает HttpOnly-cookie и возвращает `{ expiresAt }`.
+- `GET /auth/me` — профиль текущей сессии; для гостя возвращает 401, который не блокирует каталог.
+- `POST /auth/logout` — отзывает сессию, ответ 204.
+
+Все изменяющие запросы отправляются с `X-CSRF-Protection: 1`, все запросы — с `credentials: 'include'`. Логин: 3–100 символов из `a-zA-Z0-9_.@-`, пароль: 12–128 символов. Новый аккаунт должен подтвердить email перед входом. Для frontend-страницы подтверждения backend использует `EMAIL_VERIFICATION_URL`, для возврата после OAuth — `AUTH_SUCCESS_URL`.
 
 ## Units
 
@@ -442,7 +456,7 @@ Endpoint-ы:
 ## Пример клиента
 
 ```ts
-const API_URL = 'http://localhost:3000/api';
+const API_URL = "http://localhost:3000/api";
 
 export async function apiRequest<T>(
   path: string,
@@ -451,7 +465,7 @@ export async function apiRequest<T>(
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options.headers,
     },
   });

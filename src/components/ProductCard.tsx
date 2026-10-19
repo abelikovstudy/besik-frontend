@@ -1,22 +1,33 @@
 import { useLanguage } from "../hooks/useLanguage";
 import { Heart, Plus, Package } from "lucide-react";
 import { useEffect, useState } from "react";
-import { loadVariantImages } from "../lib/api";
+import { demoMode, loadVariantImages } from "../lib/api";
 import type { Catalog, Product, Variant } from "../types";
 import { maxQuantity, productImage, stepOf } from "../lib/catalog";
+import { productUrl } from "../lib/routes";
+import { usePage } from "../hooks/usePage";
 export function ProductImage({
   product,
   variant,
   className = "",
   gallery = false,
+  priority = false,
 }: {
   product: Product;
   variant?: Variant;
   className?: string;
   gallery?: boolean;
+  priority?: boolean;
 }) {
   const { t, localized } = useLanguage();
-  const [images, setImages] = useState<{ id: string; urls: string[] }>();
+  const initial = usePage();
+  const [images, setImages] = useState<
+    { id: string; urls: string[] } | undefined
+  >(() =>
+    variant && initial.images[variant.id]
+      ? { id: variant.id, urls: initial.images[variant.id] }
+      : undefined,
+  );
   const [selected, setSelected] = useState<string>();
   const [failed, setFailed] = useState<string[]>([]);
   const variantId = variant?.id;
@@ -25,6 +36,10 @@ export function ProductImage({
     setSelected(undefined);
     setFailed([]);
     if (variantId) {
+      if (initial.images[variantId])
+        return () => {
+          active = false;
+        };
       loadVariantImages(variantId).then(
         (urls) => {
           if (active) setImages({ id: variantId, urls });
@@ -50,7 +65,8 @@ export function ProductImage({
       className={className}
       src={src}
       alt={localized(product.nameI18n)}
-      loading="lazy"
+      loading={priority ? "eager" : "lazy"}
+      fetchPriority={priority ? "high" : undefined}
       onError={() => setFailed((previous) => [...previous, src])}
     />
   ) : (
@@ -93,7 +109,6 @@ export function ProductCard({
   catalog,
   favorite,
   onFavorite,
-  onOpen,
   onAdd,
 }: {
   product: Product;
@@ -101,22 +116,22 @@ export function ProductCard({
   catalog: Catalog;
   favorite: boolean;
   onFavorite: () => void;
-  onOpen: () => void;
   onAdd: (variant: Variant) => void;
 }) {
-  const { t, localized, money } = useLanguage();
+  const { t, localized, money, language } = useLanguage();
+  const href = productUrl(product, variant, language, demoMode);
   const available = maxQuantity(catalog, variant) >= stepOf(catalog, variant);
   const unit = catalog.units.find((item) => item.id === variant.unitId);
   return (
     <article className="product-card">
       <div className="product-visual">
-        <button
+        <a
           className="product-image-button"
-          onClick={onOpen}
+          href={href}
           aria-label={t("Подробнее: {0}", { "0": localized(product.nameI18n) })}
         >
           <ProductImage product={product} variant={variant} />
-        </button>
+        </a>
         {!available && (
           <span className="product-badge">{t("Скоро в наличии")}</span>
         )}
@@ -138,9 +153,9 @@ export function ProductCard({
         <span className="product-brand">
           {product.brandName || "Shop collection"}
         </span>
-        <button className="product-title" onClick={onOpen}>
+        <a className="product-title" href={href}>
           {localized(product.nameI18n)}
-        </button>
+        </a>
         <div className="product-bottom">
           <span>
             {money(variant.price, variant.currency)}
@@ -157,7 +172,11 @@ export function ProductCard({
             aria-label={t("В корзину: {0}", {
               "0": localized(product.nameI18n),
             })}
-            onClick={() => (unit?.allowsFraction ? onOpen() : onAdd(variant))}
+            onClick={() =>
+              unit?.allowsFraction
+                ? window.location.assign(href)
+                : onAdd(variant)
+            }
           >
             <Plus size={20} />
           </button>
